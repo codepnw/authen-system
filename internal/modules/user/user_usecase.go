@@ -1,11 +1,17 @@
 package user
 
-import "context"
+import (
+	"context"
+	"errors"
+	"time"
+
+	"github.com/codepnw/go-authen-system/internal/utils"
+)
 
 type UserUsecase interface {
 	CreateUser(ctx context.Context, req *CreateUserRequest) (*User, error)
-	GetProfile(ctx context.Context, id int64) (User, error)
-	GetUsers(ctx context.Context) ([]User, error)
+	GetProfile(ctx context.Context, id int64) (*User, error)
+	GetUsers(ctx context.Context) ([]*User, error)
 	UpdateUser(ctx context.Context, id int64, req *UpdateUserRequest) error
 	DeleteUser(ctx context.Context, id int64) error
 }
@@ -19,21 +25,76 @@ func NewUserUsecase(repo UserRepository) UserUsecase {
 }
 
 func (u *userUsecase) CreateUser(ctx context.Context, req *CreateUserRequest) (*User, error) {
-	panic("unimplemented")
+	found, err := u.repo.FindByEmail(ctx, req.Email)
+	if err != nil {
+		return nil, err
+	}
+	if found != nil {
+		return nil, errors.New("email already exists")
+	}
+
+	hashedPassword, err := utils.HashPassword(req.Password)
+	if err != nil {
+		return nil, err
+	}
+
+	user := &User{
+		Username: req.Username,
+		Email:    req.Email,
+		Password: hashedPassword,
+	}
+
+	created, err := u.repo.Create(ctx, user)
+	if err != nil {
+		return nil, err
+	}
+
+	return created, nil
 }
 
 func (u *userUsecase) DeleteUser(ctx context.Context, id int64) error {
-	panic("unimplemented")
+	if err := u.repo.Delete(ctx, id); err != nil {
+		return err
+	}
+	return nil
 }
 
-func (u *userUsecase) GetProfile(ctx context.Context, id int64) (User, error) {
-	panic("unimplemented")
+func (u *userUsecase) GetProfile(ctx context.Context, id int64) (*User, error) {
+	user, err := u.repo.FindByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return user, nil
 }
 
-func (u *userUsecase) GetUsers(ctx context.Context) ([]User, error) {
-	panic("unimplemented")
+func (u *userUsecase) GetUsers(ctx context.Context) ([]*User, error) {
+	users, err := u.repo.ListUsers(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return users, nil
 }
 
 func (u *userUsecase) UpdateUser(ctx context.Context, id int64, req *UpdateUserRequest) error {
-	panic("unimplemented")
+	user, err := u.repo.FindByID(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	if req.Email != nil {
+		user.Email = *req.Email
+	}
+
+	if req.Username != nil {
+		user.Username = *req.Username
+	}
+
+	now := time.Now()
+	user.UpdatedAt = &now
+
+	if err = u.repo.Update(ctx, user); err != nil {
+		return err
+	}
+
+	return nil
 }
