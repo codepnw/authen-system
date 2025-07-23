@@ -25,6 +25,7 @@ func NewUserUsecase(repo UserRepository) UserUsecase {
 }
 
 func (u *userUsecase) CreateUser(ctx context.Context, req *CreateUserRequest) (*User, error) {
+	// Check Email
 	found, err := u.repo.FindByEmail(ctx, req.Email)
 	if err != nil {
 		return nil, err
@@ -33,6 +34,11 @@ func (u *userUsecase) CreateUser(ctx context.Context, req *CreateUserRequest) (*
 		return nil, errors.New("email already exists")
 	}
 
+	if req.Password != req.ConfirmPassword {
+		return nil, errors.New("password and confirm_password not match")
+	}
+
+	// Hash Password
 	hashedPassword, err := utils.HashPassword(req.Password)
 	if err != nil {
 		return nil, err
@@ -44,6 +50,7 @@ func (u *userUsecase) CreateUser(ctx context.Context, req *CreateUserRequest) (*
 		Password: hashedPassword,
 	}
 
+	// Create User
 	created, err := u.repo.Create(ctx, user)
 	if err != nil {
 		return nil, err

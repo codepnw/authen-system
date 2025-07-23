@@ -1,10 +1,9 @@
 package user
 
 import (
-	"fmt"
-	"net/http"
 	"strconv"
 
+	"github.com/codepnw/go-authen-system/internal/utils/response"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 )
@@ -25,91 +24,95 @@ func (h *userHandler) CreateUser(c *gin.Context) {
 	req := new(CreateUserRequest)
 
 	if err := c.ShouldBindJSON(req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+		response.BadRequest(c, "", err)
 		return
 	}
 
 	if err := h.validate.Struct(req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+		response.BadRequest(c, "", err)
 		return
 	}
 
+	// Create User
 	user, err := h.uc.CreateUser(c, req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.InternalServerError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"data": user})
+	response.Created(c, user)
 }
 
 func (h *userHandler) GetProfile(c *gin.Context) {
-	id := c.Param("id")
-	idInt, err := strconv.ParseInt(id, 10, 64)
+	// TODO: get id from context
+	id, err := getIntParamID(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+		response.BadRequest(c, "", err)
 		return
 	}
 
-	user, err := h.uc.GetProfile(c, idInt)
+	user, err := h.uc.GetProfile(c, id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.InternalServerError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": user})
+	response.Success(c, "", user)
 }
 
 func (h *userHandler) GetUsers(c *gin.Context) {
 	users, err := h.uc.GetUsers(c)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		response.InternalServerError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": users})
+	response.Success(c, "", users)
 }
 
 func (h *userHandler) UpdateUser(c *gin.Context) {
-	id := c.Param("id")
-	idInt, err := strconv.ParseInt(id, 10, 64)
+	id, err := getIntParamID(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+		response.BadRequest(c, "invalid id", err)
 		return
 	}
 
 	req := new(UpdateUserRequest)
 
 	if err := c.ShouldBindJSON(req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+		response.BadRequest(c, "", err)
 		return
 	}
 
 	if err := h.validate.Struct(req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+		response.BadRequest(c, "", err)
 		return
 	}
 
-	if err = h.uc.UpdateUser(c, idInt, req); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	// Update User
+	if err = h.uc.UpdateUser(c, id, req); err != nil {
+		response.InternalServerError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("user id %d updated", idInt)})
+	response.Success(c, "user updated", nil)
 }
 
 func (h *userHandler) DeleteUser(c *gin.Context) {
-	id := c.Param("id")
-	idInt, err := strconv.ParseInt(id, 10, 64)
+	id, err := getIntParamID(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+		response.BadRequest(c, "invalid id", err)
 		return
 	}
 
-	if err = h.uc.DeleteUser(c, idInt); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	if err = h.uc.DeleteUser(c, id); err != nil {
+		response.InternalServerError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("user id %d deleted", idInt)})
+	response.Success(c, "user deleted", nil)
+}
+
+func getIntParamID(key string) (int64, error) {
+	return strconv.ParseInt(key, 10, 64)
 }
