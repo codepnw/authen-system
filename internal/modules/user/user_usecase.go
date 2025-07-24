@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/codepnw/go-authen-system/internal/utils"
+	"github.com/codepnw/go-authen-system/internal/utils/security"
 )
 
 type UserUsecase interface {
@@ -39,7 +39,7 @@ func (u *userUsecase) CreateUser(ctx context.Context, req *CreateUserRequest) (*
 	}
 
 	// Hash Password
-	hashedPassword, err := utils.HashPassword(req.Password)
+	hashedPassword, err := security.HashPassword(req.Password)
 	if err != nil {
 		return nil, err
 	}

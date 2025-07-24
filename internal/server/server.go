@@ -19,9 +19,11 @@ func Run(cfg *config.Config) error {
 	routes := setupRoutes{
 		router: r,
 		db:     db,
+		cfg:    cfg,
 	}
 	routes.healthCheck()
 	routes.userRoutes()
+	routes.authRoutes()
 
 	return r.Run(":" + cfg.AppPort)
 }

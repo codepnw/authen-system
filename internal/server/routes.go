@@ -3,6 +3,8 @@ package server
 import (
 	"net/http"
 
+	"github.com/codepnw/go-authen-system/config"
+	"github.com/codepnw/go-authen-system/internal/modules/auth"
 	"github.com/codepnw/go-authen-system/internal/modules/user"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -11,6 +13,7 @@ import (
 type setupRoutes struct {
 	router *gin.Engine
 	db     *gorm.DB
+	cfg    *config.Config
 }
 
 func (r *setupRoutes) healthCheck() {
@@ -31,4 +34,15 @@ func (r *setupRoutes) userRoutes() {
 	user.GET("/:id", hdl.GetProfile)
 	user.PATCH("/:id", hdl.UpdateUser)
 	user.DELETE("/:id", hdl.DeleteUser)
+}
+
+func (r *setupRoutes) authRoutes() {
+	userRepo := user.NewUserRepository(r.db)
+	userUsecase := user.NewUserUsecase(userRepo)
+
+	authUsecase := auth.NewAuthUsecase(r.cfg, userUsecase)
+	authHandler := auth.NewAuthHandler(authUsecase)
+
+	auth := r.router.Group("/auth")
+	auth.POST("/register", authHandler.Register)
 }
