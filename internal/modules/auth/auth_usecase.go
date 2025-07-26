@@ -33,30 +33,16 @@ func (uc *authUsecase) Register(ctx context.Context, req *user.CreateUserRequest
 		return nil, err
 	}
 
-	credential := &security.TokenUser{
-		ID:    user.ID,
-		Email: user.Email,
-		// TODO: change role later
-		Role: "user",
-	}
+	tokenUser := uc.tokenUser(user)
 
-	// Generate Access Token
-	accessToken, err := uc.tokenConfig.GenerateAccessToken(credential)
+	// Generate Token
+	accessToken, refreshToken, err := uc.generateToken(tokenUser)
 	if err != nil {
 		return nil, err
 	}
 
-	// Generate Refresh Token
-	refreshToken, err := uc.tokenConfig.GenerateRefreshToken(credential)
-	if err != nil {
-		return nil, err
-	}
-
-	response := &AuthResponseDTO{
-		User:         user,
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
-	}
+	// Data Response
+	response := uc.authResponse(user, accessToken, refreshToken)
 
 	return response, nil
 }
@@ -73,30 +59,49 @@ func (uc *authUsecase) Login(ctx context.Context, req *LoginRequestDTO) (*AuthRe
 		return nil, errors.New("invalid email or password")
 	}
 
-	credential := &security.TokenUser{
-		ID:    user.ID,
-		Email: user.Email,
-		// TODO: change role later
-		Role: "user",
-	}
+	tokenUser := uc.tokenUser(user)
 
-	// Generate Access Token
-	accessToken, err := uc.tokenConfig.GenerateAccessToken(credential)
+	// Generate Token
+	accessToken, refreshToken, err := uc.generateToken(tokenUser)
 	if err != nil {
 		return nil, err
+	}
+
+	// Data Response
+	response := uc.authResponse(user, accessToken, refreshToken)
+
+	return response, nil
+}
+
+// Private Method
+func (uc *authUsecase) tokenUser(user *user.User) *security.TokenUser {
+	return &security.TokenUser{
+		ID:    user.ID,
+		Email: user.Email,
+		Role:  "user", // TODO: change later
+	}
+}
+
+func (uc *authUsecase) generateToken(user *security.TokenUser) (string, string, error) {
+	// Generate Access Token
+	accessToken, err := uc.tokenConfig.GenerateAccessToken(user)
+	if err != nil {
+		return "", "", err
 	}
 
 	// Generate Refresh Token
-	refreshToken, err := uc.tokenConfig.GenerateRefreshToken(credential)
+	refreshToken, err := uc.tokenConfig.GenerateRefreshToken(user)
 	if err != nil {
-		return nil, err
+		return "", "", err
 	}
 
-	response := &AuthResponseDTO{
+	return accessToken, refreshToken, nil
+}
+
+func (uc *authUsecase) authResponse(user *user.User, accessToken, refreshToken string) *AuthResponseDTO {
+	return &AuthResponseDTO{
 		User:         user,
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 	}
-
-	return response, nil
 }
