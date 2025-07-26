@@ -40,3 +40,25 @@ func (h *authHandler) Register(c *gin.Context) {
 
 	response.Created(c, data)
 }
+
+func (h *authHandler) Login(c *gin.Context) {
+	req := new(LoginRequestDTO)
+
+	if err := c.ShouldBindJSON(req); err != nil {
+		response.BadRequest(c, "", err)
+		return
+	}
+
+	if err := h.validate.Struct(req); err != nil {
+		response.BadRequest(c, "", err)
+		return
+	}
+
+	result, err := h.uc.Login(c, req)
+	if err != nil {
+		response.InternalServerError(c, err)
+		return
+	}
+
+	response.Success(c, "", result)
+}

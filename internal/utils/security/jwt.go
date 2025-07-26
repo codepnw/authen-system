@@ -1,6 +1,7 @@
 package security
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -72,4 +73,35 @@ func (t *TokenConfig) generateToken(input *generateTokenParams) (string, error) 
 	}
 
 	return tokenStr, nil
+}
+
+func (t *TokenConfig) VerifyToken(tokenString, key string) (*TokenUser, error) {
+	token, err := jwt.Parse(tokenString, func(t *jwt.Token) (any, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unknow signing method: %v", t.Header)
+		}
+		return []byte(key), nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	if !token.Valid {
+		return nil, errors.New("invalid token")
+	}
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return nil, errors.New("verification failed")
+	}
+
+	if float64(time.Now().Unix()) > claims["exp"].(float64) {
+		return nil, errors.New("token is expired")
+	}
+
+	user := new(TokenUser)
+	user.ID = int64(claims["user_id"].(float64)) // JSON encode number to float64
+	user.Email = claims["email"].(string)
+	user.Role = claims["role"].(string)
+
+	return user, nil
 }
