@@ -18,6 +18,10 @@ func BadRequest(c *gin.Context, message string, err error) {
 	c.JSON(http.StatusBadRequest, gin.H{"message": message, "error": err.Error()})
 }
 
+func Unauthorized(c *gin.Context, err error) {
+	c.JSON(http.StatusUnauthorized, gin.H{"message": "unauthorized", "error": err.Error()})
+}
+
 func InternalServerError(c *gin.Context, err error) {
 	c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 }

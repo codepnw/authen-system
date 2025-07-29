@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/codepnw/go-authen-system/config"
+	"github.com/codepnw/go-authen-system/internal/middleware"
 	"github.com/codepnw/go-authen-system/internal/modules/auth"
 	"github.com/codepnw/go-authen-system/internal/modules/user"
 	"github.com/gin-gonic/gin"
@@ -43,7 +44,12 @@ func (r *setupRoutes) authRoutes() {
 	authUsecase := auth.NewAuthUsecase(r.cfg, userUsecase)
 	authHandler := auth.NewAuthHandler(authUsecase)
 
+	// Public 
 	auth := r.router.Group("/auth")
 	auth.POST("/register", authHandler.Register)
 	auth.POST("/login", authHandler.Login)
+
+	// Private
+	private := auth.Use(middleware.AuthMiddleware(r.cfg))
+	private.GET("/profile", authHandler.Profile)
 }

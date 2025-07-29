@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"github.com/codepnw/go-authen-system/internal/middleware"
 	"github.com/codepnw/go-authen-system/internal/modules/user"
 	"github.com/codepnw/go-authen-system/internal/utils/response"
 	"github.com/gin-gonic/gin"
@@ -61,4 +62,14 @@ func (h *authHandler) Login(c *gin.Context) {
 	}
 
 	response.Success(c, "", result)
+}
+
+func (h *authHandler) Profile(c *gin.Context) {
+	user, ok := c.Get(middleware.UserContextKey)
+	if !ok {
+		response.Unauthorized(c, nil)
+		return
+	}
+
+	response.Success(c, "", user)
 }
