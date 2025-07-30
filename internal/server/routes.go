@@ -41,10 +41,11 @@ func (r *setupRoutes) authRoutes() {
 	userRepo := user.NewUserRepository(r.db)
 	userUsecase := user.NewUserUsecase(userRepo)
 
-	authUsecase := auth.NewAuthUsecase(r.cfg, userUsecase)
+	authRepo := auth.NewAuthRepository(r.db)
+	authUsecase := auth.NewAuthUsecase(r.cfg, authRepo, userUsecase)
 	authHandler := auth.NewAuthHandler(authUsecase)
 
-	// Public 
+	// Public
 	auth := r.router.Group("/auth")
 	auth.POST("/register", authHandler.Register)
 	auth.POST("/login", authHandler.Login)
@@ -52,4 +53,6 @@ func (r *setupRoutes) authRoutes() {
 	// Private
 	private := auth.Use(middleware.AuthMiddleware(r.cfg))
 	private.GET("/profile", authHandler.Profile)
+	private.POST("/refresh-token", authHandler.RefreshToken)
+	private.GET("/logout", authHandler.Logout)
 }

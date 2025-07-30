@@ -4,6 +4,7 @@ import (
 	"github.com/codepnw/go-authen-system/internal/middleware"
 	"github.com/codepnw/go-authen-system/internal/modules/user"
 	"github.com/codepnw/go-authen-system/internal/utils/response"
+	"github.com/codepnw/go-authen-system/internal/utils/security"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 )
@@ -72,4 +73,48 @@ func (h *authHandler) Profile(c *gin.Context) {
 	}
 
 	response.Success(c, "", user)
+}
+
+func (h *authHandler) RefreshToken(c *gin.Context) {
+	req := new(RefreshTokenRequestDTO)
+
+	if err := c.ShouldBindJSON(req); err != nil {
+		response.BadRequest(c, "", err)
+		return
+	}
+
+	if err := h.validate.Struct(req); err != nil {
+		response.BadRequest(c, "", err)
+		return
+	}
+
+	accessToken, refreshToken, err := h.uc.RefreshToken(c, req.RefreshToken)
+	if err != nil {
+		response.InternalServerError(c, err)
+		return
+	}
+	
+	res := &RefreshTokenResponseDTO{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+	}
+
+	response.Success(c, "", res)
+}
+
+func (h *authHandler) Logout(c *gin.Context) {
+	user, ok := c.Get(middleware.UserContextKey)
+	if !ok {
+		response.Unauthorized(c, nil)
+		return
+	}
+
+	u := user.(*security.TokenUser)
+
+	if err := h.uc.Logout(c, u.ID); err != nil {
+		response.InternalServerError(c, err)
+		return
+	}
+
+	response.Success(c, "logout success", nil)
 }

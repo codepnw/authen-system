@@ -9,6 +9,8 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+const RefreshTokenDuration time.Duration = time.Hour * 24 * 7
+
 type TokenConfig struct {
 	SecretKey  string
 	RefreshKey string
@@ -48,17 +50,24 @@ func (t *TokenConfig) GenerateAccessToken(user *TokenUser) (string, error) {
 }
 
 func (t *TokenConfig) GenerateRefreshToken(user *TokenUser) (string, error) {
-	duration := time.Hour * 24 * 7
-
 	return t.generateToken(&generateTokenParams{
 		ID:       user.ID,
 		Email:    user.Email,
 		Role:     user.Role,
 		Key:      t.RefreshKey,
-		Duration: duration,
+		Duration: RefreshTokenDuration,
 	})
 }
 
+func (t *TokenConfig) VerifyAccessToken(accessToken string) (*TokenUser, error) {
+	return t.verifyToken(accessToken, t.SecretKey)
+}
+
+func (t *TokenConfig) VerifyRefreshToken(refreshToken string) (*TokenUser, error) {
+	return t.verifyToken(refreshToken, t.RefreshKey)
+}
+
+// -------- Private ----------
 func (t *TokenConfig) generateToken(input *generateTokenParams) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"user_id": input.ID,
@@ -75,7 +84,7 @@ func (t *TokenConfig) generateToken(input *generateTokenParams) (string, error) 
 	return tokenStr, nil
 }
 
-func (t *TokenConfig) VerifyToken(tokenString, key string) (*TokenUser, error) {
+func (t *TokenConfig) verifyToken(tokenString, key string) (*TokenUser, error) {
 	token, err := jwt.Parse(tokenString, func(t *jwt.Token) (any, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unknow signing method: %v", t.Header)

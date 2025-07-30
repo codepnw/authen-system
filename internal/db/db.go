@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/codepnw/go-authen-system/config"
+	"github.com/codepnw/go-authen-system/internal/modules/auth"
 	"github.com/codepnw/go-authen-system/internal/modules/user"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -25,7 +26,13 @@ func NewDatabaseConnection(cfg *config.Config) (*gorm.DB, error) {
 	}
 
 	// Migrate Entities
-	db.AutoMigrate(&user.User{})
+	err = db.AutoMigrate(
+		&user.User{},
+		&auth.RefreshToken{},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("auto migrate failed: %w", err)
+	}
 
 	return db, nil
 }

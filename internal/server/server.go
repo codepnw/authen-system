@@ -12,6 +12,7 @@ func Run(cfg *config.Config) error {
 		return err
 	}
 
+	gin.SetMode(gin.ReleaseMode)
 	r := gin.Default()
 	r.LoadHTMLGlob("templates/*.html")
 

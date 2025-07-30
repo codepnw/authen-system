@@ -23,7 +23,7 @@ func AuthMiddleware(cfg *config.Config) gin.HandlerFunc {
 
 		tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
 
-		user, err := tokenCfg.VerifyToken(tokenStr, cfg.JWTSecretKey)
+		user, err := tokenCfg.VerifyAccessToken(tokenStr)
 		if err != nil {
 			ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"message": err.Error()})
 			return
