@@ -8,6 +8,7 @@ import (
 	"github.com/codepnw/go-authen-system/internal/modules/user"
 	"github.com/codepnw/go-authen-system/internal/utils/errs"
 	"github.com/codepnw/go-authen-system/internal/utils/security"
+	"github.com/codepnw/go-authen-system/pkg/logger"
 )
 
 const queryTimeout = time.Second * 5
@@ -40,6 +41,7 @@ func (uc *authUsecase) Register(ctx context.Context, req *user.CreateUserRequest
 	// Create User
 	user, err := uc.userUsecase.CreateUser(ctx, req)
 	if err != nil {
+		logger.Error("REGIS-001", "create user failed", err)
 		return nil, err
 	}
 
@@ -48,11 +50,13 @@ func (uc *authUsecase) Register(ctx context.Context, req *user.CreateUserRequest
 	// Generate Token
 	accessToken, refreshToken, err := uc.generateToken(tokenUser)
 	if err != nil {
+		logger.Error("REGIS-002", "generate token failed", err)
 		return nil, err
 	}
 
 	// Data Response
 	response := uc.authResponse(user, accessToken, refreshToken)
+	logger.Info("REGIS-003", "register success", response)
 
 	return response, nil
 }
@@ -64,11 +68,13 @@ func (uc *authUsecase) Login(ctx context.Context, req *LoginRequestDTO) (*AuthRe
 	// Check User By Email
 	user, err := uc.userUsecase.GetUserByEmail(ctx, req.Email)
 	if err != nil {
+		logger.Error("LOGIN-001", "get user email failed", err)
 		return nil, errs.ErrInvalidEmailOrPassword
 	}
 
 	// Check Password
 	if ok := security.VerifyPassword(user.Password, req.Password); !ok {
+		logger.Error("LOGIN-002", "verify password failed", err)
 		return nil, errs.ErrInvalidEmailOrPassword
 	}
 
@@ -77,6 +83,7 @@ func (uc *authUsecase) Login(ctx context.Context, req *LoginRequestDTO) (*AuthRe
 	// Generate Token
 	accessToken, refreshToken, err := uc.generateToken(tokenUser)
 	if err != nil {
+		logger.Error("LOGIN-003", "generate token failed", err)
 		return nil, errs.ErrGenerateToken
 	}
 
@@ -87,11 +94,13 @@ func (uc *authUsecase) Login(ctx context.Context, req *LoginRequestDTO) (*AuthRe
 		ExpiresAt:    time.Now().Add(security.RefreshTokenDuration),
 	})
 	if err != nil {
+		logger.Error("LOGIN-004", "save refresh token failed", err)
 		return nil, errs.ErrSaveToken
 	}
 
 	// Data Response
 	response := uc.authResponse(user, accessToken, refreshToken)
+	logger.Info("LOGIN-005", "login success", response)
 
 	return response, nil
 }
@@ -103,24 +112,28 @@ func (uc *authUsecase) RefreshToken(ctx context.Context, refreshToken string) (s
 	// Verify Refresh Token
 	user, err := uc.tokenConfig.VerifyRefreshToken(refreshToken)
 	if err != nil {
+		logger.Error("REFRESH-001", "verify token failed", err)
 		return "", "", errs.ErrInvalidToken
 	}
 
 	// Check Refresh Token in DB
 	valid := uc.authRepo.IsRefreshToken(ctx, refreshToken)
 	if !valid {
+		logger.Error("REFRESH-002", "check token failed", err)
 		return "", "", errs.ErrInvalidToken
 	}
 
 	// Generate New Access Token
 	newAccessToken, err := uc.tokenConfig.GenerateAccessToken(user)
 	if err != nil {
+		logger.Error("REFRESH-003", "generate access token failed", err)
 		return "", "", errs.ErrGenerateToken
 	}
 
 	// Generate New Refresh Token
 	newRefreshToken, err := uc.tokenConfig.GenerateRefreshToken(user)
 	if err != nil {
+		logger.Error("REFRESH-004", "generate refresh token failed", err)
 		return "", "", errs.ErrGenerateToken
 	}
 
@@ -131,9 +144,11 @@ func (uc *authUsecase) RefreshToken(ctx context.Context, refreshToken string) (s
 		ExpiresAt:    time.Now().Add(security.RefreshTokenDuration),
 	})
 	if err != nil {
+		logger.Error("REFRESH-005", "update token failed", err)
 		return "", "", errs.ErrSaveToken
 	}
 
+	logger.Info("REFRESH-006", "refresh token success", nil)
 	return newAccessToken, newRefreshToken, nil
 }
 
@@ -142,9 +157,11 @@ func (uc *authUsecase) Logout(ctx context.Context, userID int64) error {
 	defer cancel()
 
 	if err := uc.authRepo.DeleteRefreshToken(ctx, userID); err != nil {
+		logger.Error("LOGOUT-001", "delete token failed", err)
 		return errs.ErrInvalidToken
 	}
 
+	logger.Info("LOGOUT-002", "logout success", nil)
 	return nil
 }
 
